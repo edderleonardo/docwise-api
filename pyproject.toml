@@ -1,0 +1,23 @@
+[project]
+name = "docwise-api"
+version = "0.1.0"
+description = "RAG API - PDF ingestion, pgvector similarity search & streaming chat"
+requires-python = ">=3.13"
+dependencies = [
+  "alembic>=1.18.5",
+  "asyncpg>=0.31.0",
+  "fastapi[standard]>=0.138.1",
+  "google-generativeai>=0.8.6",
+  "llama-index-core>=0.14.23",
+  "llama-index-readers-file>=0.6.0",
+  "pgvector>=0.4.2",
+  "psycopg2-binary>=2.9.12",
+  "pydantic-settings>=2.14.2",
+  "python-dotenv>=1.2.2",
+  "python-multipart>=0.0.32",
+  "sentence-transformers>=5.6.0",
+  "sqlalchemy[asyncio]>=2.0.51",
+]
+
+[dependency-groups]
+dev = ["httpx>=0.28.1", "pytest>=9.1.1", "pytest-asyncio>=1.4.0"]
