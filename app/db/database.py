@@ -18,7 +18,7 @@ AsyncSessionLocal = async_sessionmaker(
 )
 
 
-async def get_bd():
+async def get_db():
     """
     Dependency injection for FastAPI routes.
     It will create a new session for each request and close it after the request is done.
