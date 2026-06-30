@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import documents, health
+from app.api.routes import chat, documents, health
 from app.core.embeddings import get_model
 
 
@@ -47,3 +48,4 @@ app.add_middleware(
 # Routers
 app.include_router(health.router)
 app.include_router(documents.router)
+app.include_router(chat.router)
