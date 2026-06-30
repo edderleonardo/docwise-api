@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     # Embeddings
     embedding_model: str = "all-MiniLM-L6-v2"
     embedding_dims: int = 384
+    gemini_model: str = "gemini-3.5-flash"
     top_k_results: int = 5
     chunk_size: int = 512
     chunk_overlap: int = 50
