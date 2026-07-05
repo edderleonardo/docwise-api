@@ -21,7 +21,7 @@ async def get_relevant_chunks(
     A list of relevant chunks from the database based on the question.
     """
     # 1 Convert the question to vector
-    query_embedding = embed_query(question)
+    query_embedding = await embed_query(question)
     # 2 Cosine similarity search in pgvector
     # The operator <=> is cosine distance in pgvector
     # ORDER BY distance ASC = more similar first

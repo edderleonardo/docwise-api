@@ -2,6 +2,7 @@ import uuid
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
+from google.genai import errors as genai_errors
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -33,6 +34,17 @@ async def chat(
             yield "data: [DONE]\n\n"
         except ValueError as e:
             yield f"data: [ERROR] {str(e)}\n\n"
+        except genai_errors.APIError as e:
+            if e.code == 429:
+                yield (
+                    "data: [ERROR] The AI service is at its rate limit. "
+                    "Please wait a minute and try again.\n\n"
+                )
+            else:
+                yield (
+                    f"data: [ERROR] The AI service failed ({e.code}). "
+                    "Please try again.\n\n"
+                )
 
     return StreamingResponse(
         event_stream(),

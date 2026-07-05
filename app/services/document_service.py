@@ -1,5 +1,6 @@
 import uuid
 from fastapi import HTTPException, UploadFile
+from google.genai import errors as genai_errors
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -68,7 +69,23 @@ async def process_upload(file: UploadFile, db: AsyncSession) -> dict:
     await db.flush()  # flush to get the ID without committing yet
 
     # 3. Generate chunks + embeddings
-    chunks_data = chunk_and_embed(pdf_bytes, file.filename)
+    try:
+        chunks_data = chunk_and_embed(pdf_bytes, file.filename)
+    except genai_errors.APIError as e:
+        if e.code == 429:
+            raise HTTPException(
+                status_code=429,
+                detail=(
+                    "The AI service is at its rate limit. "
+                    "Please try again in a few minutes."
+                ),
+            )
+        raise HTTPException(
+            status_code=502,
+            detail=f"The AI service failed while processing the document ({e.code}).",
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     # 4. Insert chunks into the DB
     chunks = [

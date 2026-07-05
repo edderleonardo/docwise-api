@@ -1,29 +1,52 @@
-from contextlib import asynccontextmanager
+import asyncio
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import documents, health
-from app.api.routes import chat, documents, health
-from app.core.embeddings import get_model
+from app.api.routes import chat, documents, health, internal
+from app.db.database import AsyncSessionLocal
+from app.services.cleanup_service import cleanup_expired_sessions
+
+# How often the background task looks for expired sessions
+CLEANUP_INTERVAL_SECONDS = 3600
+
+
+async def _cleanup_loop():
+    """
+    Deletes expired sessions on startup and then once per hour.
+    Covers users who close the browser without deleting their document.
+    """
+    while True:
+        try:
+            async with AsyncSessionLocal() as db:
+                deleted = await cleanup_expired_sessions(db)
+                if deleted:
+                    print(f"Cleanup: removed {deleted} expired session(s)")
+        except Exception as e:
+            # Never let a transient DB error kill the loop
+            print(f"Cleanup task error: {e}")
+        await asyncio.sleep(CLEANUP_INTERVAL_SECONDS)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     Runs on app startup and shutdown.
-    We load the model here so that the cold start
-    does not affect the user's first request.
+    Embeddings now come from the Gemini API, so there is no local
+    model to preload — startup is instant.
     """
-    # On startup — load the model into memory
-    print("Loading embedding model...")
-    get_model()
-    print("Model loaded. Ready to serve requests.")
+    print("Ready to serve requests.")
+
+    cleanup_task = asyncio.create_task(_cleanup_loop())
 
     yield  # the app runs here
 
-    # On shutdown — cleanup if needed
+    # On shutdown — stop the background cleanup task
     print("Shutting down...")
+    cleanup_task.cancel()
+    with suppress(asyncio.CancelledError):
+        await cleanup_task
 
 
 app = FastAPI(
@@ -49,3 +72,4 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(documents.router)
 app.include_router(chat.router)
+app.include_router(internal.router)

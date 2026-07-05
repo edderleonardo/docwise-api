@@ -5,6 +5,8 @@ from pgvector.sqlalchemy import Vector
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
+from app.config import settings
+
 
 class Base(DeclarativeBase):
     pass
@@ -29,7 +31,8 @@ class Session(Base):
     max_questions: Mapped[int] = mapped_column(
         Integer,
         nullable=False,
-        default=20,
+        # Lambda so the configured value is read per session, not at import time
+        default=lambda: settings.max_questions,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
@@ -58,7 +61,7 @@ class Chunk(Base):
     )
     content: Mapped[str] = mapped_column(Text, nullable=False)
     embedding: Mapped[list[float]] = mapped_column(
-        Vector(384),
+        Vector(settings.embedding_dims),
     )
     chunk_index: Mapped[int] = mapped_column(Integer)
     session: Mapped["Session"] = relationship(

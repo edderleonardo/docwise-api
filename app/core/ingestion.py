@@ -29,8 +29,13 @@ def chunk_and_embed(pdf_bytes: bytes, filename: str) -> list[dict]:
             chunk_overlap=settings.chunk_overlap,
         )
         nodes = splitter.get_nodes_from_documents(documents)
-        # 4 Extract the text from the nodes
-        texts = [node.text for node in nodes if node.text.strip()]
+        # 4 Extract the text from the nodes.
+        # NUL bytes appear in some PDFs and PostgreSQL rejects them in TEXT columns.
+        texts = [
+            text
+            for node in nodes
+            if (text := node.text.replace("\x00", "")).strip()
+        ]
 
         if not texts:
             raise ValueError(f"No text extracted from the PDF. from {documents}")
