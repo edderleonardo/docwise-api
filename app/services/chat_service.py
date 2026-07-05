@@ -1,10 +1,11 @@
 import uuid
+from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.core.llm import stream_response
+from app.core.llm import expand_query, stream_response
 from app.core.retrieval import get_relevant_chunks
 from app.db.models import Session
 
@@ -43,6 +44,7 @@ async def increment_question_count(
     Updates the question counter and last_active timestamp.
     """
     session.questions_used += 1
+    session.last_active = datetime.now(timezone.utc)
     await db.commit()
 
 
@@ -59,7 +61,11 @@ async def generate_chat_response(
     4. Update the question counter
     """
     session = await validate_chat_request(session_id, db)
-    chunks = await get_relevant_chunks(session_id, question, db)
+
+    # Rewrite the question so vector search matches the document's vocabulary;
+    # the LLM still receives the user's original question.
+    search_query = await expand_query(question)
+    chunks = await get_relevant_chunks(session_id, search_query, db)
 
     if not chunks:
         raise ValueError("No content available for this document")

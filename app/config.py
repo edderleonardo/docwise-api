@@ -23,9 +23,9 @@ class Settings(BaseSettings):
     max_questions: int = 20
     max_pdf_size_mb: int = 10
 
-    # Embeddings
-    embedding_model: str = "all-MiniLM-L6-v2"
-    embedding_dims: int = 384
+    # Embeddings — Gemini API (multilingual, same key as chat)
+    embedding_model: str = "gemini-embedding-001"
+    embedding_dims: int = 768
     gemini_model: str = "gemini-3.5-flash"
     top_k_results: int = 5
     chunk_size: int = 512
