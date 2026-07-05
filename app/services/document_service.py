@@ -47,11 +47,16 @@ async def get_active_session(session_id: uuid.UUID, db: AsyncSession) -> Session
     return session
 
 
-async def process_upload(file: UploadFile, db: AsyncSession) -> dict:
+async def process_upload(
+    file: UploadFile,
+    db: AsyncSession,
+    previous_session_id: uuid.UUID | None = None,
+) -> dict:
     """
     Full upload flow:
     1. Validate the file
-    2. Check that there is no active session with a document
+    2. Delete the client's previous session, if it sent one (keeps one
+       active document per client without needing accounts)
     3. Create the session in the DB
     4. Generate chunks + embeddings
     5. Insert chunks into pgvector
@@ -59,7 +64,17 @@ async def process_upload(file: UploadFile, db: AsyncSession) -> dict:
     # 1. Validate and read the PDF
     pdf_bytes = await validate_upload(file)
 
-    # 2. Create the session
+    # 2. Replace the previous document: drop its session and chunks (cascade)
+    if previous_session_id:
+        result = await db.execute(
+            select(Session).where(Session.id == previous_session_id)
+        )
+        previous = result.scalar_one_or_none()
+        if previous:
+            await db.delete(previous)
+            await db.flush()
+
+    # 3. Create the session
     session = Session(
         id=uuid.uuid4(),
         filename=file.filename,
@@ -68,7 +83,7 @@ async def process_upload(file: UploadFile, db: AsyncSession) -> dict:
     db.add(session)
     await db.flush()  # flush to get the ID without committing yet
 
-    # 3. Generate chunks + embeddings
+    # 4. Generate chunks + embeddings
     try:
         chunks_data = chunk_and_embed(pdf_bytes, file.filename)
     except genai_errors.APIError as e:
@@ -87,7 +102,7 @@ async def process_upload(file: UploadFile, db: AsyncSession) -> dict:
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    # 4. Insert chunks into the DB
+    # 5. Insert chunks into the DB
     chunks = [
         Chunk(
             session_id=session.id,
@@ -100,7 +115,7 @@ async def process_upload(file: UploadFile, db: AsyncSession) -> dict:
     db.add_all(chunks)
     await db.commit()
 
-    # 5. Update status to ready
+    # 6. Update status to ready
     session.status = "ready"
     await db.commit()
 
