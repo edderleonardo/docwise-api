@@ -56,13 +56,13 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS — allows the Vercel frontend to call the backend
+# CORS — allows the Vercel frontend to call the backend.
+# allow_origins does not expand wildcards inside a domain, so the
+# Vercel subdomains need allow_origin_regex instead.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",  # local Next.js
-        "https://*.vercel.app",  # Vercel deployment
-    ],
+    allow_origins=["http://localhost:3000"],  # local Next.js
+    allow_origin_regex=r"https://.*\.vercel\.app",  # Vercel deployments
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
