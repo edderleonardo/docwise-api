@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, UploadFile, File
+from fastapi import APIRouter, Depends, Form, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import get_db
@@ -18,13 +18,15 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 @router.post("/upload", response_model=UploadResponse)
 async def upload_document(
     file: UploadFile = File(...),
+    previous_session_id: uuid.UUID | None = Form(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Upload a PDF and generate embeddings.
-    Only 1 active document is allowed per session.
+    Send previous_session_id when replacing a document so the old
+    session (and its chunks) is deleted instead of lingering until the TTL.
     """
-    result = await process_upload(file, db)
+    result = await process_upload(file, db, previous_session_id)
     return result
 
 
