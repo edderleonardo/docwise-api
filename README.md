@@ -167,15 +167,23 @@ All settings are managed with `pydantic-settings` and can be overridden via envi
 
 ## Tests
 
-The `tests/` folder contains manual smoke scripts that exercise the pipeline against live services (running database + Gemini API key required):
+The automated suite lives in `tests/` and runs with:
 
 ```bash
-uv run python tests/test_llm.py           # Gemini streaming with a stub context
-uv run python tests/test_ingestion.py     # chunk + embed a local PDF
-uv run python tests/test_chat_service.py  # full RAG flow against a real session
+uv run pytest
 ```
 
-An automated pytest suite is on the roadmap.
+It only needs the Postgres container running — a dedicated `docwise_test` database is created (and dropped) automatically on the same instance, so pgvector behaves exactly like production. All Gemini calls are mocked; no test touches the network or needs an API key.
+
+Coverage: upload validation and ingestion (`test_documents.py`), session replacement, chat validation/quota/retrieval scoping/SSE streaming (`test_chat.py`), and TTL cleanup + the internal endpoint (`test_cleanup.py`).
+
+The `scripts/` folder additionally contains manual smoke scripts that exercise the pipeline against live services (running database + Gemini API key required):
+
+```bash
+uv run python scripts/smoke_llm.py           # Gemini streaming with a stub context
+uv run python scripts/smoke_ingestion.py     # chunk + embed a local PDF
+uv run python scripts/smoke_chat_service.py  # full RAG flow against a real session
+```
 
 ## Project Structure
 
@@ -191,7 +199,8 @@ app/
 ├── db/                # Async SQLAlchemy models, engine, Alembic migrations
 ├── schemas/           # Pydantic request/response models
 └── config.py          # pydantic-settings configuration
-tests/                 # manual smoke scripts (see Tests section)
+tests/                 # automated pytest suite (see Tests section)
+scripts/               # manual smoke scripts against live services
 ```
 
 ## Design Decisions
