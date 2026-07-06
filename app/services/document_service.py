@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 from fastapi import HTTPException, UploadFile
 from google.genai import errors as genai_errors
@@ -7,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.core.ingestion import chunk_and_embed
 from app.db.models import Chunk, Session
+from app.services.usage_service import consume_daily_quota
 
 
 async def validate_upload(file: UploadFile) -> bytes:
@@ -18,11 +20,17 @@ async def validate_upload(file: UploadFile) -> bytes:
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Only PDF files are allowed")
 
-    # 2. Read the file
-    pdf_bytes = await file.read()
-
-    # 3. Check the size (max 10MB)
     max_bytes = settings.max_pdf_size_mb * 1024 * 1024
+
+    # 2. Reject by declared size before reading the body at all
+    if file.size and file.size > max_bytes:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File too large. Maximum size is {settings.max_pdf_size_mb}MB",
+        )
+
+    # 3. Read and re-check the real size (the declared one can lie)
+    pdf_bytes = await file.read()
     if len(pdf_bytes) > max_bytes:
         raise HTTPException(
             status_code=400,
@@ -64,6 +72,9 @@ async def process_upload(
     # 1. Validate and read the PDF
     pdf_bytes = await validate_upload(file)
 
+    # Global cost brake — every accepted upload spends daily budget
+    await consume_daily_quota(db, uploads=1)
+
     # 2. Replace the previous document: drop its session and chunks (cascade)
     if previous_session_id:
         result = await db.execute(
@@ -83,9 +94,12 @@ async def process_upload(
     db.add(session)
     await db.flush()  # flush to get the ID without committing yet
 
-    # 4. Generate chunks + embeddings
+    # 4. Generate chunks + embeddings.
+    # chunk_and_embed is synchronous (PDF parsing + blocking retries in the
+    # embeddings client) — run it in a worker thread so one slow upload
+    # doesn't freeze the event loop for every other request.
     try:
-        chunks_data = chunk_and_embed(pdf_bytes, file.filename)
+        chunks_data = await asyncio.to_thread(chunk_and_embed, pdf_bytes, file.filename)
     except genai_errors.APIError as e:
         if e.code == 429:
             raise HTTPException(

@@ -1,5 +1,9 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# Development-only fallback. The app refuses to start in production with this
+# value — see the lifespan check in app/main.py.
+DEV_INTERNAL_API_KEY = "local-dev-secret-123"
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -9,6 +13,9 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    # "development" | "production" — production enforces stricter startup checks
+    environment: str = "development"
+
     # Database
     database_url: str
 
@@ -16,7 +23,20 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
 
     # Internal
-    internal_api_key: str = "local-dev-secret-123"
+    internal_api_key: str = DEV_INTERNAL_API_KEY
+
+    # Abuse protection — per-IP rate limits (slowapi syntax)
+    rate_limit_uploads: str = "10/hour"
+    rate_limit_chat: str = "30/minute"
+
+    # Abuse protection — global daily budget (cost brake for the whole service,
+    # not per user; the API returns 503 once exhausted)
+    max_daily_uploads: int = 200
+    max_daily_questions: int = 2000
+
+    # A 10MB PDF can decompress to far more text than it weighs — cap the
+    # number of chunks a single document may produce
+    max_chunks_per_document: int = 500
 
     # Session config
     session_ttl_hours: int = 24

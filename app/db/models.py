@@ -1,8 +1,8 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from app.config import settings
@@ -68,3 +68,18 @@ class Chunk(Base):
         "Session",
         back_populates="chunks",
     )
+
+
+class DailyUsage(Base):
+    """
+    Global per-day counters used as a cost brake: once the daily budget of
+    uploads or questions is spent, the API answers 503 until the next day.
+    This bounds the worst-case Gemini bill regardless of how many IPs an
+    attacker rotates through.
+    """
+
+    __tablename__ = "daily_usage"
+
+    day: Mapped[date] = mapped_column(Date, primary_key=True)
+    uploads: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    questions: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

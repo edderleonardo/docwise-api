@@ -1,8 +1,10 @@
 import uuid
 
-from fastapi import APIRouter, Depends, Form, UploadFile, File
+from fastapi import APIRouter, Depends, Form, Request, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
+from app.core.rate_limit import limiter
 from app.db.database import get_db
 from app.db.models import Session
 from app.schemas.document import DeleteResponse, StatusResponse, UploadResponse
@@ -16,7 +18,9 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 
 
 @router.post("/upload", response_model=UploadResponse)
+@limiter.limit(settings.rate_limit_uploads)
 async def upload_document(
+    request: Request,
     file: UploadFile = File(...),
     previous_session_id: uuid.UUID | None = Form(default=None),
     db: AsyncSession = Depends(get_db),
