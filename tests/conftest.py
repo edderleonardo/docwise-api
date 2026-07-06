@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.pool import NullPool
 
 from app.config import settings
+from app.core.rate_limit import limiter
 from app.db.database import get_db
 from app.db.models import Base, Chunk, Session
 from app.main import app
@@ -102,10 +103,14 @@ async def client(engine):
                 raise
 
     app.dependency_overrides[get_db] = override_get_db
+    # The in-memory rate limiter would leak state between tests — off by
+    # default; tests/test_security.py re-enables it explicitly.
+    limiter.enabled = False
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
         yield c
     app.dependency_overrides.clear()
+    limiter.enabled = True
 
 
 def fake_vector(seed: float = 0.0) -> list[float]:

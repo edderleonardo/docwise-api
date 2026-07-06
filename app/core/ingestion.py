@@ -38,7 +38,17 @@ def chunk_and_embed(pdf_bytes: bytes, filename: str) -> list[dict]:
         ]
 
         if not texts:
-            raise ValueError(f"No text extracted from the PDF. from {documents}")
+            raise ValueError("No text could be extracted from the PDF")
+
+        # A small PDF can decompress into a huge amount of text (zip-bomb
+        # style) — cap the chunks so one file can't drain the embeddings
+        # quota or flood the database.
+        if len(texts) > settings.max_chunks_per_document:
+            raise ValueError(
+                "Document contains too much text "
+                f"({len(texts)} sections, max {settings.max_chunks_per_document}). "
+                "Please upload a smaller document."
+            )
 
         # 5 sentences-transformers embeddings
         embeddings = embed_texts(texts)

@@ -164,6 +164,12 @@ All settings are managed with `pydantic-settings` and can be overridden via envi
 | `TOP_K_RESULTS`                | `5`                    | Chunks retrieved per question                             |
 | `CHUNK_SIZE` / `CHUNK_OVERLAP` | `512` / `50`           | Chunking parameters (tokens)                              |
 | `INTERNAL_API_KEY`             | —                      | Secret for the `/internal/*` endpoints                    |
+| `ENVIRONMENT`                  | `development`          | Set to `production` to enable strict startup checks       |
+| `RATE_LIMIT_UPLOADS`           | `10/hour`              | Per-IP upload rate limit                                  |
+| `RATE_LIMIT_CHAT`              | `30/minute`            | Per-IP chat rate limit                                    |
+| `MAX_DAILY_UPLOADS`            | `200`                  | Global daily upload budget (503 once exhausted)           |
+| `MAX_DAILY_QUESTIONS`          | `2000`                 | Global daily question budget (503 once exhausted)         |
+| `MAX_CHUNKS_PER_DOCUMENT`      | `500`                  | Cap on chunks per document (zip-bomb protection)          |
 
 ## Tests
 
@@ -224,6 +230,7 @@ scripts/               # manual smoke scripts against live services
 - **pgvector over a dedicated vector DB** — for this scale, Postgres handles both relational session data and vector search in a single store, with cascade deletes keeping vectors and sessions consistent for free.
 - **SSE over WebSockets** — the chat is strictly server-to-client streaming, so SSE gives real-time UX with plain HTTP and zero connection-management complexity.
 - **Quota + TTL per session** — a question limit and automatic expiry make the demo safe to expose publicly without runaway LLM costs. An in-process background task deletes expired sessions every hour, and `/internal/cleanup` allows an external scheduler to trigger the same purge.
+- **Layered abuse protection** — the per-session quota only limits honest users (creating sessions is free), so cost control is layered: per-IP rate limits on upload and chat (slowapi), a global daily budget stored in Postgres that returns 503 once exhausted (bounding the worst-case Gemini bill even against distributed abuse), a cap on chunks per document (a 10MB PDF can decompress to far more text than it weighs), bounded question length, and CPU-heavy PDF parsing moved off the event loop so a slow upload can't freeze the API. In production the app refuses to boot with the committed dev `INTERNAL_API_KEY`.
 
 ## License
 
