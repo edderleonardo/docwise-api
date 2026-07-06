@@ -1,0 +1,67 @@
+[
+  {
+    "question": "How many days do I have to return a product?",
+    "expected_output": "You have 30 calendar days from the delivery date of your order to request a return or exchange.",
+    "category": "factual"
+  },
+  {
+    "question": "What condition must a product be in for a return to be accepted?",
+    "expected_output": "The product must be unused and in the same condition it was received, keep its original packaging, tags, seals and accessories, and include proof of purchase (digital receipt or order number).",
+    "category": "factual"
+  },
+  {
+    "question": "Can I return underwear or swimwear?",
+    "expected_output": "No. Underwear, swimwear, and socks are non-returnable for hygiene reasons.",
+    "category": "factual"
+  },
+  {
+    "question": "How long does a refund to a credit card take?",
+    "expected_output": "Credit or debit card refunds take 5 to 10 business days, depending on your bank.",
+    "category": "factual"
+  },
+  {
+    "question": "What are the steps to request a return?",
+    "expected_output": "Log in to your account and go to My Orders, select the order and click Request a return or exchange, select the reason and attach photos if the product arrived damaged, receive a prepaid shipping label by email within 24-48 hours, pack the product and drop it off at the indicated carrier, and once received and inspected (3-5 business days) the exchange or refund is processed.",
+    "category": "procedural"
+  },
+  {
+    "question": "How long is the warranty against manufacturing defects?",
+    "expected_output": "All products are covered by a 90-day warranty against manufacturing defects.",
+    "category": "factual"
+  },
+  {
+    "question": "Is the first size exchange free?",
+    "expected_output": "Yes, the first size or color exchange is free of charge. Additional exchanges for the same order carry a $99 MXN shipping fee.",
+    "category": "factual"
+  },
+  {
+    "question": "When are original shipping costs refunded?",
+    "expected_output": "Original shipping costs are only refunded when the return is due to an error by Kaan Store, such as a wrong, damaged, or defective product.",
+    "category": "factual"
+  },
+  {
+    "question": "How can I contact customer support?",
+    "expected_output": "You can email support@kaanstore.com, reach them on WhatsApp at +52 981 000 0000, or call 800 123 4567, Monday through Friday, 9:00 a.m. to 6:00 p.m. Central Mexico Time.",
+    "category": "factual"
+  },
+  {
+    "question": "How long is store credit valid?",
+    "expected_output": "Kaan store credit is credited immediately and is valid for 12 months.",
+    "category": "factual"
+  },
+  {
+    "question": "¿Puedo devolver una tarjeta de regalo?",
+    "expected_output": "No, las tarjetas de regalo y los productos digitales (descargas, licencias) no aceptan devoluciones ni cambios.",
+    "category": "multilingual"
+  },
+  {
+    "question": "¿Cuánto tarda el reembolso si pagué en OXXO?",
+    "expected_output": "Los pagos en efectivo (OXXO, depósito bancario) se reembolsan por transferencia bancaria dentro de 7 días hábiles, después de validar los datos de tu cuenta.",
+    "category": "multilingual"
+  },
+  {
+    "question": "What is the return policy for items bought in a physical store?",
+    "expected_output": "The document does not contain information about physical stores; the policy applies to purchases made through the website and mobile app.",
+    "category": "abstention"
+  }
+]

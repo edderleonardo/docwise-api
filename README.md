@@ -185,6 +185,20 @@ uv run python scripts/smoke_ingestion.py     # chunk + embed a local PDF
 uv run python scripts/smoke_chat_service.py  # full RAG flow against a real session
 ```
 
+## Evaluation
+
+Beyond tests that verify the code works, `evals/` measures **how well the RAG pipeline answers**. A golden dataset (`evals/golden/dataset.json`, 13 questions over a reference PDF, including multilingual and abstention cases) runs through the real pipeline — ingestion, query expansion, pgvector retrieval, Gemini generation, no mocks — and every answer is scored by an LLM-as-judge with [DeepEval](https://github.com/confident-ai/deepeval):
+
+- **Faithfulness** — does the answer invent facts outside the retrieved context? (hallucination detection)
+- **Answer Relevancy** — does the answer actually address the question?
+
+```bash
+uv run --group evals python evals/run_evals.py            # full dataset (~25 min on free tier)
+uv run --group evals python evals/run_evals.py --limit 3  # quick smoke run
+```
+
+Requires Postgres running and a `GEMINI_API_KEY`. All calls are paced to respect the Gemini free-tier limit (5 req/min); with billing enabled, set `EVAL_REQUEST_INTERVAL=0` and a stronger judge via `EVAL_JUDGE_MODEL=gemini-3.1-pro-preview`. The report prints per-question scores, averages, and the judge's reasoning for any answer below threshold — making it possible to compare configurations (`CHUNK_SIZE`, `TOP_K_RESULTS`, query expansion) with numbers instead of vibes.
+
 ## Project Structure
 
 ```
@@ -200,6 +214,7 @@ app/
 ├── schemas/           # Pydantic request/response models
 └── config.py          # pydantic-settings configuration
 tests/                 # automated pytest suite (see Tests section)
+evals/                 # RAG quality evaluation with DeepEval (see Evaluation section)
 scripts/               # manual smoke scripts against live services
 ```
 
