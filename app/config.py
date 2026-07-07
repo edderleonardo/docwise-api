@@ -30,9 +30,10 @@ class Settings(BaseSettings):
     rate_limit_chat: str = "30/minute"
 
     # Abuse protection — global daily budget (cost brake for the whole service,
-    # not per user; the API returns 503 once exhausted)
-    max_daily_uploads: int = 200
-    max_daily_questions: int = 2000
+    # not per user; the API returns 503 once exhausted). Sized for a portfolio
+    # demo: caps the worst-case Gemini bill at roughly $3/day under attack.
+    max_daily_uploads: int = 50
+    max_daily_questions: int = 500
 
     # A 10MB PDF can decompress to far more text than it weighs — cap the
     # number of chunks a single document may produce
