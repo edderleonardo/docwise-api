@@ -167,8 +167,8 @@ All settings are managed with `pydantic-settings` and can be overridden via envi
 | `ENVIRONMENT`                  | `development`          | Set to `production` to enable strict startup checks       |
 | `RATE_LIMIT_UPLOADS`           | `10/hour`              | Per-IP upload rate limit                                  |
 | `RATE_LIMIT_CHAT`              | `30/minute`            | Per-IP chat rate limit                                    |
-| `MAX_DAILY_UPLOADS`            | `200`                  | Global daily upload budget (503 once exhausted)           |
-| `MAX_DAILY_QUESTIONS`          | `2000`                 | Global daily question budget (503 once exhausted)         |
+| `MAX_DAILY_UPLOADS`            | `50`                   | Global daily upload budget (503 once exhausted)           |
+| `MAX_DAILY_QUESTIONS`          | `500`                  | Global daily question budget (503 once exhausted)         |
 | `MAX_CHUNKS_PER_DOCUMENT`      | `500`                  | Cap on chunks per document (zip-bomb protection)          |
 
 ## Tests
