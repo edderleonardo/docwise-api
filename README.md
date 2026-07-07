@@ -127,6 +127,7 @@ The API is now available at `http://localhost:8000` — interactive docs at [`/d
 | `GET`    | `/health`                         | Health check.                                                                                   |
 | `GET`    | `/config`                         | Public limits (max questions, upload size, TTL) so the frontend stays in sync with the backend. |
 | `POST`   | `/internal/cleanup`               | Purge expired sessions on demand. Requires the `X-Internal-Api-Key` header.                     |
+| `GET`    | `/internal/stats`                 | Usage stats: per-day history, lifetime totals, active sessions. Requires the `X-Internal-Api-Key` header. |
 
 ### Example
 
@@ -147,6 +148,13 @@ curl -N -X POST http://localhost:8000/chat/3f2b... \
 curl -X POST http://localhost:8000/internal/cleanup \
   -H "X-Internal-Api-Key: your-secret-key"
 # → {"sessions_deleted": 3}
+
+# Usage stats (?days=N controls the history window, default 30)
+curl http://localhost:8000/internal/stats \
+  -H "X-Internal-Api-Key: your-secret-key"
+# → {"history": [{"day": "2026-07-07", "uploads": 3, "questions": 12}, ...],
+#    "totals": {"uploads": 4, "questions": 17, "days_with_activity": 2},
+#    "active_sessions": {"count": 1, "questions_in_progress": 4}}
 ```
 
 ## Configuration

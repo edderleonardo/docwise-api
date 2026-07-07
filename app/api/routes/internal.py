@@ -1,13 +1,14 @@
 import secrets
 
-from fastapi import APIRouter, Depends, HTTPException, Security
+from fastapi import APIRouter, Depends, HTTPException, Query, Security
 from fastapi.security import APIKeyHeader
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.db.database import get_db
-from app.schemas.internal import CleanupResponse
+from app.schemas.internal import CleanupResponse, StatsResponse
 from app.services.cleanup_service import cleanup_expired_sessions
+from app.services.usage_service import get_usage_stats
 
 router = APIRouter(prefix="/internal", tags=["internal"])
 
@@ -38,3 +39,19 @@ async def cleanup_sessions(db: AsyncSession = Depends(get_db)):
     """
     deleted = await cleanup_expired_sessions(db)
     return {"sessions_deleted": deleted}
+
+
+@router.get(
+    "/stats",
+    response_model=StatsResponse,
+    dependencies=[Depends(verify_internal_key)],
+)
+async def usage_stats(
+    days: int = Query(default=30, ge=1, le=365),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Usage statistics: per-day history and lifetime totals (from daily_usage,
+    which survives session cleanup) plus a snapshot of active sessions.
+    """
+    return await get_usage_stats(db, days=days)
