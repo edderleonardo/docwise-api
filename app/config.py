@@ -1,4 +1,6 @@
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import make_url
 
 # Development-only fallback. The app refuses to start in production with this
 # value — see the lifespan check in app/main.py.
@@ -18,6 +20,27 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str
+
+    @field_validator("database_url")
+    @classmethod
+    def _normalize_database_url(cls, v: str) -> str:
+        """
+        Accept the connection string exactly as providers hand it out.
+        Neon/Heroku-style URLs say `postgresql://` and append
+        `?sslmode=require&channel_binding=require` — asyncpg needs the
+        `postgresql+asyncpg://` driver and rejects those query params
+        (it negotiates SSL on its own), so normalize instead of crashing
+        on the first query.
+        """
+        url = make_url(v.strip())
+        if url.drivername == "postgresql":
+            url = url.set(drivername="postgresql+asyncpg")
+        query = {
+            k: val
+            for k, val in url.query.items()
+            if k not in ("sslmode", "channel_binding")
+        }
+        return url.set(query=query).render_as_string(hide_password=False)
 
     # AI
     gemini_api_key: str = ""
