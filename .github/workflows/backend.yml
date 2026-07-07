@@ -1,0 +1,111 @@
+# CI/CD: every push to main runs the test suite against a real
+# Postgres+pgvector, and only if it passes builds the Docker image and
+# deploys it to Cloud Run.
+#
+# Required GitHub secrets (Settings → Secrets and variables → Actions):
+#   GCP_SA_KEY        — JSON key of the deploy service account
+#   GCP_PROJECT_ID    — GCP project id
+#   GEMINI_API_KEY    — production Gemini key (separate GCP project)
+#   INTERNAL_API_KEY  — openssl rand -hex 32
+#   DATABASE_URL      — Neon POOLER connection string (postgresql+asyncpg://...)
+#
+# Plus one repository VARIABLE (same screen, "Variables" tab):
+#   DEPLOY_ENABLED=true — flips on the deploy job once the secrets exist
+name: Backend — test & deploy
+
+on:
+  push:
+    branches: [main]
+
+env:
+  REGION: us-central1
+  SERVICE: docwise-api
+  REPOSITORY: docwise # Artifact Registry repo (must exist — see task 5)
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      # The suite creates/drops its own docwise_test database on this server
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/postgres
+      # Never a real key in CI: every Gemini call is mocked in tests, but the
+      # client is constructed at import time and refuses an empty key
+      GEMINI_API_KEY: ci-dummy-key
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Run tests
+        run: uv run pytest -q
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    # Skips cleanly (no red X) until deploy is switched on. The `secrets`
+    # context is not allowed in job-level `if`, hence a repository variable.
+    if: ${{ vars.DEPLOY_ENABLED == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build and push image
+        run: |
+          IMAGE="${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE }}:${{ github.sha }}"
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE }}
+          region: ${{ env.REGION }}
+          image: ${{ env.IMAGE }}
+          # min-instances=0 keeps the service inside the free tier (accepting
+          # cold starts); max-instances=1 is the cost ceiling
+          flags: >-
+            --allow-unauthenticated
+            --min-instances=0
+            --max-instances=1
+            --memory=1Gi
+            --cpu=1
+          env_vars: |-
+            ENVIRONMENT=production
+            MAX_QUESTIONS=10
+            GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+            INTERNAL_API_KEY=${{ secrets.INTERNAL_API_KEY }}
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+
+      - name: Smoke test
+        run: |
+          URL=$(gcloud run services describe ${{ env.SERVICE }} --region ${{ env.REGION }} --format 'value(status.url)')
+          curl --fail --silent --retry 5 --retry-delay 5 "$URL/health"
