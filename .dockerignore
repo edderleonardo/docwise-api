@@ -1,0 +1,37 @@
+# Secrets — never bake credentials into the image
+.env
+.env.*
+
+# Git
+.git/
+.gitignore
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+
+# Tests and evals — not needed at runtime
+tests/
+evals/
+.pytest_cache/
+.coverage
+htmlcov/
+.deepeval/
+.deepeval-cache.json
+
+# Local tooling
+docker-compose.yml
+Dockerfile
+.dockerignore
+.vscode/
+.idea/
+.uv/
+
+# Docs
+README.md
+
+# OS
+.DS_Store
