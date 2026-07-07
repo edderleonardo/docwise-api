@@ -29,7 +29,13 @@ def run_migrations_offline() -> None:
 
 async def run_migrations_online() -> None:
     """Se conecta a la DB y aplica los cambios."""
-    connectable = create_async_engine(settings.database_url)
+    # statement_cache_size=0: mismo motivo que en app/db/database.py — que la
+    # migración no truene si la URL apunta al pooler de Neon (PgBouncer).
+    # Aun así, corre las migraciones con la connection string DIRECTA.
+    connectable = create_async_engine(
+        settings.database_url,
+        connect_args={"statement_cache_size": 0},
+    )
 
     async with connectable.connect() as connection:
         await connection.run_sync(
